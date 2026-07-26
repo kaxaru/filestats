@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Параллельные прогоны одной ветки бессмысленны: интересен результат последнего.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Линтер и тесты
+    runs-on: ubuntu-latest
+
+    # Тесты идут против настоящего Postgres — того же, что и в бою. Подменять
+    # его на SQLite означало бы проверять не то, что поедет в прод: репозитории
+    # и запросы чтения написаны на SQL.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: filestats
+          POSTGRES_PASSWORD: filestats
+          POSTGRES_DB: filestats_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U filestats"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://filestats:filestats@localhost:5433/filestats_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Установщик с сайта, а не сторонний action: одной зависимостью меньше и
+      # нечему разъехаться по версиям.
+      - name: Установить uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Зависимости
+        run: uv sync
+
+      - name: Линтер
+        run: uv run ruff check .
+
+      - name: Форматирование
+        run: uv run ruff format --check .
+
+      - name: Тесты
+        run: uv run pytest -q
+
+  hygiene:
+    name: Гигиена репозитория
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # .gitignore не действует на то, что уже отслеживается. Проверка ловит
+      # ровно этот случай: файл добавили до того, как появилось правило.
+      - name: Секреты не отслеживаются
+        run: |
+          found=$(git ls-files \
+            | grep -E '(^|/)\.env($|\.)|\.pem$|\.key$|\.p12$|id_rsa|id_ecdsa|id_ed25519|(^|/)\.netrc$|credentials\.json$' \
+            | grep -v '\.env\.example$' || true)
+          if [ -n "$found" ]; then
+            echo "::error::в репозитории отслеживаются файлы, которых там быть не должно"
+            echo "$found"
+            exit 1
+          fi
+          echo "секретов в индексе нет"
+
+      # Shell-скрипт с CRLF ломает запуск образа: ядро видит «bash\r» и
+      # сообщает «bad interpreter». На Windows такой файл появляется незаметно.
+      - name: Скрипты без CRLF
+        run: |
+          found=$(grep -rlU $'\r' --include='*.sh' . || true)
+          if [ -n "$found" ]; then
+            echo "::error::скрипты с CRLF — образ не запустится"
+            echo "$found"
+            exit 1
+          fi
+          echo "переводы строк в скриптах в порядке"
+
+  image:
+    name: Образ собирается
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ловит поломки Dockerfile и точки входа до того, как они доедут до
+      # сервера: отсутствующий файл или снятый бит исполнения видно только
+      # при сборке.
+      - name: docker build
+        run: docker build -t filestats:ci .
+
+      - name: Точка входа на месте и исполнима
+        run: |
+          docker run --rm --entrypoint /bin/sh filestats:ci -c \
+            'test -x ./deploy/entrypoint.sh && echo "точка входа в порядке"'
+
+      - name: Миграции и приложение импортируются
+        run: |
+          docker run --rm --entrypoint /bin/sh filestats:ci -c \
+            'alembic --version && python -c "import app.main; print(\"приложение импортируется\")"'

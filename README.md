@@ -1,5 +1,7 @@
 # Сервис скачивания и анализа файлов
 
+[![CI](https://github.com/kaxaru/filestats/actions/workflows/ci.yml/badge.svg)](https://github.com/kaxaru/filestats/actions/workflows/ci.yml)
+
 Скачивает каталог текстовых файлов через ограниченное по частоте API и считает
 статистику по цифрам в их содержимом.
 
@@ -50,6 +52,23 @@ uv run ruff check .
 
 Адрес базы переопределяется через `TEST_DATABASE_URL`. Убрать за собой:
 `docker rm -f filestats-test-db`.
+
+### CI
+
+`.github/workflows/ci.yml`, три задачи на каждый push и pull request:
+
+| Задача | Что проверяет |
+|---|---|
+| Линтер и тесты | `ruff check`, `ruff format --check`, весь набор тестов против Postgres в service-контейнере |
+| Гигиена репозитория | секреты не отслеживаются, shell-скрипты без CRLF |
+| Образ собирается | `docker build`, точка входа исполнима, приложение импортируется |
+
+Тесты в CI идут против настоящего Postgres той же версии, что и в бою —
+репозитории и запросы чтения написаны на SQL, и подмена на SQLite проверяла бы
+не то, что поедет в прод.
+
+Автоматического развёртывания нет намеренно — обоснование в
+[docs/DECISIONS.md](docs/DECISIONS.md), D-006.
 
 ### Секреты
 
