@@ -1,0 +1,364 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #fff;
+  --ink: #1b1f24;
+  --muted: #6a737d;
+  --line: #dfe3e8;
+  --accent: #2563eb;
+  --accent-soft: #eef3ff;
+  --accent-edge: #c7d7fe;
+  --ok: #12855a;
+  --warn: #b45309;
+  --err: #b42318;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  padding: 0 24px;
+}
+
+nav {
+  display: flex;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+nav a {
+  padding: 16px 0;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+nav a.is-active,
+nav a:hover {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1 { font-size: 22px; margin: 0 0 20px; }
+h2 { font-size: 17px; margin: 0 0 12px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+button {
+  font: inherit;
+  padding: 9px 16px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { filter: brightness(1.08); }
+button:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+button.is-secondary { background: var(--panel); color: var(--ink); border-color: var(--line); }
+button.is-secondary:hover:not(:disabled) { background: var(--bg); filter: none; }
+
+/* Действия над страницей — один орган управления, а не три равнозначные
+   кнопки: визуально они должны читаться как связанная группа. */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.segmented button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+.segmented button + button { border-left: 1px solid var(--line); }
+.segmented button:hover:not(:disabled) { background: var(--accent-soft); filter: none; }
+.segmented button:disabled { background: var(--bg); color: var(--muted); }
+
+/* Выбор всего каталога — не действие над страницей, а смена режима,
+   поэтому и выглядит иначе: переключатель, а не кнопка. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch:hover { background: var(--accent-soft); }
+
+.switch--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.selection-count {
+  color: var(--muted);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.selection-count--active { color: var(--accent); font-weight: 500; }
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
+
+input[type="checkbox"]:disabled { cursor: not-allowed; opacity: .45; }
+
+.page-head { margin-bottom: 20px; }
+.page-head h1 { margin-bottom: 4px; }
+.page-head__subtitle { color: var(--muted); font-size: 14px; margin: 0; }
+
+/* Показатели — карточками: четыре числа в ряд без границ читаются как
+   сплошная строка, и глазу не за что зацепиться. */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.metric {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.metric--accent { background: var(--accent-soft); border-color: var(--accent-edge); }
+.metric--warn { background: #fff7ed; border-color: #fed7aa; }
+.metric--warn .metric__value { color: var(--warn); }
+
+.pacing {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.pacing__title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.metric__label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-bottom: 4px;
+}
+
+.metric__value {
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.metric__value--small { font-size: 16px; }
+
+.progress { margin-bottom: 14px; }
+
+.progress__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.progress__title { color: var(--muted); font-size: 13px; }
+.progress__percent { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.bar {
+  height: 10px;
+  background: var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #4f83f1);
+  border-radius: 5px;
+  transition: width .4s ease;
+}
+
+/* Пояснения — не сплошной текст, а перечень с заголовками: так их читают,
+   а не пролистывают. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.fact__title { font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+.fact__text { color: var(--muted); font-size: 13.5px; margin: 0; }
+
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.action-bar button { padding: 11px 22px; font-size: 15px; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  border: 1px solid var(--line);
+}
+
+.badge--running { color: var(--accent); border-color: currentColor; }
+.badge--completed { color: var(--ok); border-color: currentColor; }
+.badge--failed { color: var(--err); border-color: currentColor; }
+.badge--stopped,
+.badge--idle { color: var(--muted); }
+
+.note { color: var(--muted); font-size: 13.5px; }
+.note--warn { color: var(--warn); }
+.note--error { color: var(--err); }
+.note:last-child { margin-bottom: 0; }
+
+.table-wrap { overflow-x: auto; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+td.is-num, th.is-num { text-align: right; }
+
+/* Сортировка на заголовке колонки: понятнее, что именно сортируется, чем
+   отдельная кнопка где-то в панели. */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.th-sort:hover { color: var(--accent); filter: none; }
+.th-sort__arrow { color: var(--accent); font-size: 12px; }
+
+/* Выбор строкой, а не попаданием в чекбокс: цель размером в 13 пикселей —
+   это лишняя точность там, где она ни к чему. */
+.table--selectable tbody tr { cursor: pointer; }
+.table--selectable tbody tr:hover { background: var(--bg); }
+
+.table--selectable tbody tr.is-selected {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.table--selectable tbody tr.is-selected:hover { background: var(--accent-edge); }
+
+/* Когда выбран весь каталог, отдельные галочки ни на что не влияют — и не
+   должны выглядеть так, будто влияют. */
+.table--locked tbody tr { cursor: default; opacity: .55; }
+.table--locked tbody tr:hover { background: transparent; }
+
+td.is-check { width: 36px; }
+
+code {
+  font: 13px ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.toolbar__spacer { flex: 1; }
+
+.pager {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.pager a,
+.pager button,
+.pager .pager__current {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pager button:hover { background: var(--accent-soft); filter: none; }
+.pager__current { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pager__info { color: var(--muted); }
+
+.is-hidden { display: none; }
+
+.spinner { display: none; color: var(--muted); }
+.htmx-request .spinner { display: inline; }

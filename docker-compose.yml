@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-filestats}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-filestats}
+      POSTGRES_DB: ${POSTGRES_DB:-filestats}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-filestats}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    # Проверяем не «поднялся процесс», а готовность вместе с базой: без неё
+    # сервис не может ни скачивать, ни считать. curl в образе нет — обходимся
+    # интерпретатором, который там точно есть.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import sys, urllib.request
+          sys.exit(0 if urllib.request.urlopen("http://localhost:8000/health").status == 200 else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Скачивание идёт часами — контейнер должен подниматься сам после
+    # перезагрузки сервера и продолжать прерванный прогон.
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      # Порт снаружи настраивается: на машине разработчика 80 обычно занят.
+      - "${WEB_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  pgdata:

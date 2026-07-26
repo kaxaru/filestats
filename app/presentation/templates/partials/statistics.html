@@ -1,0 +1,101 @@
+{% if message %}
+  <div class="panel"><p class="note">{{ message }}</p></div>
+{% elif statistics %}
+<div class="panel">
+  <h2>Общая статистика</h2>
+  <p class="note">
+    Выбрано файлов: <strong>{{ statistics.files_selected }}</strong>,
+    всего символов: <strong>{{ statistics.grand_total }}</strong>.
+    Посчитано по всей выборке целиком.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Цифра</th>
+          {% for cell in statistics.totals %}<th class="is-num">{{ cell.digit }}</th>{% endfor %}
+          <th class="is-num">Итого</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Встретилась раз</td>
+          {% for cell in statistics.totals %}<td class="is-num">{{ cell.count }}</td>{% endfor %}
+          <td class="is-num"><strong>{{ statistics.grand_total }}</strong></td>
+        </tr>
+        <tr>
+          <td class="note">Доля</td>
+          {% for cell in statistics.totals %}
+            <td class="is-num note">{{ cell.share }}</td>
+          {% endfor %}
+          <td class="is-num note">100.00%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Статистика по файлам</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="is-num">#</th>
+          {% for column in statistics.columns %}
+          <th aria-sort="{{ column.aria }}">
+            <button type="button" class="th-sort"
+                    title="{{ column.hint }}"
+                    hx-post="{{ column.url }}"
+                    hx-include="#selection-form"
+                    hx-target="#statistics"
+                    hx-swap="innerHTML">
+              {{ column.title }}
+              <span class="th-sort__arrow">{{ column.arrow }}</span>
+            </button>
+          </th>
+          {% endfor %}
+          {% for digit in statistics.digits %}<th class="is-num">{{ digit }}</th>{% endfor %}
+          <th class="is-num">Итого</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in statistics.per_file %}
+        <tr>
+          <td class="is-num note">{{ item.number }}</td>
+          <td><code>{{ item.name }}</code></td>
+          <td class="note">{{ item.downloaded_at }}</td>
+          {% for count in item.counts %}<td class="is-num">{{ count }}</td>{% endfor %}
+          <td class="is-num">{{ item.total }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Страницы разбивки перезапрашиваются вместе с формой выбора: иначе переход
+     на вторую страницу потерял бы отмеченные файлы. #}
+  <div class="pager">
+    {% if statistics.previous_url %}
+      <button type="button"
+              hx-post="{{ statistics.previous_url }}"
+              hx-include="#selection-form"
+              hx-target="#statistics"
+              hx-swap="innerHTML"
+              class="is-secondary">←</button>
+    {% endif %}
+    <span class="pager__current">{{ statistics.page }}</span>
+    <span class="pager__info">из {{ statistics.pages }}</span>
+    {% if statistics.next_url %}
+      <button type="button"
+              hx-post="{{ statistics.next_url }}"
+              hx-include="#selection-form"
+              hx-target="#statistics"
+              hx-swap="innerHTML"
+              class="is-secondary">→</button>
+    {% endif %}
+    <span class="pager__info">файлов в выборке: {{ statistics.files_selected }}</span>
+    <span class="spinner">считаю…</span>
+  </div>
+</div>
+{% endif %}

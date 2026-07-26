@@ -1,0 +1,82 @@
+{# Блок показателей. Пока прогон идёт, сам себя перезапрашивает; когда процесс
+   завершился, атрибут опроса не выводится и запросы прекращаются. #}
+<div id="progress"
+     hx-get="/download/progress"
+     hx-swap="outerHTML"
+     {% if progress.is_running %}hx-trigger="every 2s"{% endif %}>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric__label">Старт по Новосибирску</div>
+      <div class="metric__value metric__value--small">{{ progress.started_at }}</div>
+    </div>
+    <div class="metric">
+      <div class="metric__label">Получено названий</div>
+      <div class="metric__value">{{ progress.names_discovered }}</div>
+    </div>
+    <div class="metric{% if progress.is_running %} metric--accent{% endif %}">
+      <div class="metric__label">Скачано</div>
+      <div class="metric__value">
+        {{ progress.files_with_content }} из {{ progress.names_discovered }}
+      </div>
+    </div>
+    <div class="metric">
+      <div class="metric__label">Состояние</div>
+      <div class="metric__value metric__value--small">
+        <span class="badge badge--{{ progress.status_code }}">{{ progress.status_label }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress">
+    <div class="progress__head">
+      <span class="progress__title">Прогресс обхода</span>
+      <span class="progress__percent">{{ progress.percent }}%</span>
+    </div>
+    <div class="bar">
+      <div class="bar__fill" style="width: {{ progress.percent }}%"></div>
+    </div>
+  </div>
+
+  {% if progress.pause_note %}
+    <p class="note note--warn">{{ progress.pause_note }}</p>
+  {% elif progress.error %}
+    <p class="note note--error">{{ progress.error }}</p>
+  {% elif progress.hint %}
+    <p class="note">{{ progress.hint }}</p>
+  {% endif %}
+
+  {% if progress.pacing %}
+    <div class="pacing">
+      <div class="pacing__title">Наблюдавшийся темп</div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric__label">Запросов в минуту</div>
+          <div class="metric__value">{{ progress.pacing.requests_per_minute }}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">Всего запросов</div>
+          <div class="metric__value">{{ progress.pacing.requests_made }}</div>
+        </div>
+        <div class="metric{% if progress.pacing.throttle_events %} metric--warn{% endif %}">
+          <div class="metric__label">Отказов 429 / 403</div>
+          <div class="metric__value">{{ progress.pacing.throttle_events }}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">Интервал, с</div>
+          <div class="metric__value">{{ progress.pacing.interval_seconds }}</div>
+        </div>
+        <div class="metric">
+          <div class="metric__label">В паузах, мин</div>
+          <div class="metric__value">{{ progress.pacing.minutes_paused }}</div>
+        </div>
+      </div>
+      <p class="note">
+        {{ progress.pacing.verdict }}
+        Каталог свои лимиты не публикует и не отдаёт заголовков
+        <code>X-RateLimit-*</code> — это измерения собственного трафика,
+        а не заявленное значение.
+      </p>
+    </div>
+  {% endif %}
+</div>

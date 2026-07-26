@@ -1,0 +1,97 @@
+{# Список файлов вместе с органами выбора.
+
+   Выделен в отдельный фрагмент, потому что пагинация подменяет только его:
+   полная перезагрузка страницы уносила бы уже посчитанную статистику и
+   состояние выбора. Адрес при этом обновляется (hx-push-url), так что
+   страница остаётся адресуемой и кнопка «назад» работает. #}
+<div id="file-list" class="panel">
+  <div class="toolbar">
+    <div class="segmented" role="group" aria-label="Выбор файлов">
+      <button type="button" data-role="select-page">Вся страница</button>
+      <button type="button" data-role="clear-all">Снять всё</button>
+    </div>
+
+    <label class="switch {% if files.everything_selected %}switch--on{% endif %}"
+           data-role="select-everything-label">
+      <input type="checkbox" data-role="select-everything"
+             {% if files.everything_selected %}checked{% endif %}>
+      Весь каталог ({{ files.total }})
+    </label>
+
+    <span class="selection-count" data-role="selection-count" data-total="{{ files.total }}">
+      Выбрано: 0
+    </span>
+
+    <div class="toolbar__spacer"></div>
+
+    <button type="submit">Произвести расчёты</button>
+    <span class="spinner">считаю…</span>
+  </div>
+
+  {% if files.is_empty %}
+    <p class="note">
+      Пока ничего не скачано. Запустите процесс на
+      <a href="/">странице скачивания</a>.
+    </p>
+  {% else %}
+    <div class="table-wrap">
+      <table class="table--selectable" data-role="files-table">
+        <thead>
+          <tr>
+            <th class="is-check"></th>
+            {# Сортировка живёт на заголовках колонок, к которым относится —
+               так понятнее, что именно сортируется, чем отдельная кнопка. #}
+            {% for column in files.columns %}
+            <th aria-sort="{{ column.aria }}">
+              <button type="button" class="th-sort"
+                      title="{{ column.hint }}"
+                      hx-get="{{ column.url }}"
+                      hx-target="#file-list"
+                      hx-swap="outerHTML"
+                      hx-push-url="true"
+                      data-role="page-link">
+                {{ column.title }}
+                <span class="th-sort__arrow">{{ column.arrow }}</span>
+              </button>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in files.rows %}
+          <tr>
+            <td class="is-check">
+              <input type="checkbox" name="names" value="{{ row.name }}"
+                     data-role="file-checkbox">
+            </td>
+            <td><code>{{ row.name }}</code></td>
+            <td>{{ row.downloaded_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      {% if files.previous_url %}
+        <button type="button" class="is-secondary"
+                hx-get="{{ files.previous_url }}"
+                hx-target="#file-list"
+                hx-swap="outerHTML"
+                hx-push-url="true"
+                data-role="page-link">←</button>
+      {% endif %}
+      <span class="pager__current">{{ files.number }}</span>
+      <span class="pager__info">из {{ files.pages }}</span>
+      {% if files.next_url %}
+        <button type="button" class="is-secondary"
+                hx-get="{{ files.next_url }}"
+                hx-target="#file-list"
+                hx-swap="outerHTML"
+                hx-push-url="true"
+                data-role="page-link">→</button>
+      {% endif %}
+      <span class="pager__info">всего файлов: {{ files.total }}</span>
+    </div>
+  {% endif %}
+</div>

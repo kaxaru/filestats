@@ -1,0 +1,22 @@
+# Переводы строк фиксируются явно: проект правится на Windows, а исполняется в
+# Linux-контейнерах. Shell-скрипт с CRLF ломает запуск образа — ядро видит
+# «#!/usr/bin/env bash\r» и сообщает «bad interpreter».
+
+* text=auto eol=lf
+
+# Обязаны быть LF независимо от настроек клиента.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.conf text eol=lf
+deploy/entrypoint.sh text eol=lf
+
+# Двоичное — не трогать.
+*.png binary
+*.jpg binary
+*.ico binary
+*.gz binary
+*.zip binary
+
+# Вендорный файл не участвует в статистике языков и в диффах.
+app/presentation/static/js/htmx.min.js linguist-vendored

@@ -1,0 +1,49 @@
+[project]
+name = "filestats"
+version = "0.1.0"
+description = "Сервис скачивания каталога файлов через ограниченное API и подсчёта статистики по цифрам"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "jinja2>=3.1",
+    "httpx>=0.28",
+    "pydantic-settings>=2.6",
+    "python-multipart>=0.0.20",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "respx>=0.22",
+    "aiosqlite>=0.20",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# Комментарии и докстроки намеренно на русском — правила про «неоднозначные»
+# кириллические символы дают на таком коде сплошной шум.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Вызовы в значениях по умолчанию — штатный способ объявить зависимость в
+# FastAPI, а не забытая мутабельная константа, от которой защищает B008.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Form",
+    "fastapi.Query",
+    "fastapi.Header",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

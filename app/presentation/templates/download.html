@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <h1>Скачивание каталога</h1>
+  <p class="page-head__subtitle">
+    Обход внешнего API до тех пор, пока ручка имён не вернёт пустой список.
+  </p>
+</div>
+
+<div class="panel">
+  <form method="post" action="/download/start" class="action-bar">
+    <button type="submit" {% if progress.is_running %}disabled{% endif %}>Скачать данные</button>
+    {% if progress.is_running %}
+      <span class="note">Процесс уже идёт — повторный запуск не нужен.</span>
+    {% else %}
+      <span class="note">
+        Имена → скачивание по три файла → отметка «скачано» на сервере.
+      </span>
+    {% endif %}
+  </form>
+</div>
+
+<div class="panel">
+  {% include "partials/progress.html" %}
+</div>
+
+<div class="panel">
+  <h2>Как это устроено</h2>
+  <div class="facts">
+    <div class="fact">
+      <div class="fact__title">Один поток, без параллелизма</div>
+      <p class="fact__text">
+        Частота запросов ограничена по адресу клиента. Распараллеливание не
+        ускорило бы обход, а привело бы к получасовой блокировке.
+      </p>
+    </div>
+    <div class="fact">
+      <div class="fact__title">Темп подбирается на ходу</div>
+      <p class="fact__text">
+        Каталог не публикует свои лимиты, поэтому клиент осторожно ускоряется
+        на серии успешных запросов и резко отступает при первом же отказе.
+      </p>
+    </div>
+    <div class="fact">
+      <div class="fact__title">Сначала сохранить, потом отметить</div>
+      <p class="fact__text">
+        Отметка необратима: отмеченное имя больше никогда не попадёт в выдачу.
+        Поэтому она идёт только после записи содержимого в базу.
+      </p>
+    </div>
+    <div class="fact">
+      <div class="fact__title">Переживает перезапуск</div>
+      <p class="fact__text">
+        Прогресс хранится в базе, а не в памяти процесса: после рестарта
+        сервиса обход продолжается с того же места.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

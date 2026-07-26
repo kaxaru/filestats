@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block scripts %}<script src="/static/js/selection.js" defer></script>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Скачанные файлы</h1>
+  <p class="page-head__subtitle">
+    Выберите файлы и посчитайте, сколько раз в них встретилась каждая цифра.
+  </p>
+</div>
+
+<form id="selection-form" hx-post="/stats" hx-target="#statistics" hx-swap="innerHTML">
+  {# Режим выбора и имена с других страниц живут вне подменяемого фрагмента,
+     чтобы пагинация их не сбрасывала. #}
+  <input type="hidden" name="scope" value="{{ files.scope_value }}" data-role="selection-scope">
+  <span data-role="offpage-names"></span>
+
+  {% include "partials/file_list.html" %}
+</form>
+
+<div id="statistics"></div>
+{% endblock %}
