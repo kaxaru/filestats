@@ -62,23 +62,36 @@ def _declared_methods(port: type) -> list[str]:
     ]
 
 
+# Каждый метод — отдельный случай, а не итерация внутри одного теста:
+# расхождение в первом методе не должно скрывать расхождения в остальных.
+PORT_METHODS = [
+    (port, implementation, method)
+    for port, implementation in PORT_IMPLEMENTATIONS
+    for method in _declared_methods(port)
+]
+
+
 @pytest.mark.parametrize(
-    ("port", "implementation"),
-    PORT_IMPLEMENTATIONS,
-    ids=[f"{port.__name__}-{impl.__name__}" for port, impl in PORT_IMPLEMENTATIONS],
+    ("port", "implementation", "method"),
+    PORT_METHODS,
+    ids=[f"{port.__name__}.{method}-{impl.__name__}" for port, impl, method in PORT_METHODS],
 )
-def test_implementation_matches_port(port: type, implementation: type) -> None:
-    declared = _declared_methods(port)
-    assert declared, f"у порта {port.__name__} не нашлось методов — проверка бесполезна"
+def test_implementation_matches_port(port: type, implementation: type, method: str) -> None:
+    actual = getattr(implementation, method, None)
+    assert actual is not None, f"{implementation.__name__} не реализует {method}"
 
-    for name in declared:
-        actual = getattr(implementation, name, None)
-        assert actual is not None, f"{implementation.__name__} не реализует {name}"
+    expected_contract = _contract(getattr(port, method))
+    actual_contract = _contract(actual)
+    assert actual_contract == expected_contract, (
+        f"{implementation.__name__}.{method} расходится с портом "
+        f"{port.__name__}.{method}: ожидалось {expected_contract}, "
+        f"получено {actual_contract}"
+    )
 
-        expected_contract = _contract(getattr(port, name))
-        actual_contract = _contract(actual)
-        assert actual_contract == expected_contract, (
-            f"{implementation.__name__}.{name} расходится с портом "
-            f"{port.__name__}.{name}: ожидалось {expected_contract}, "
-            f"получено {actual_contract}"
-        )
+
+def test_every_port_declares_methods() -> None:
+    """Иначе параметризация оказалась бы пустой и проверка — бесполезной."""
+    without_methods = [
+        port.__name__ for port, _ in PORT_IMPLEMENTATIONS if not _declared_methods(port)
+    ]
+    assert without_methods == []

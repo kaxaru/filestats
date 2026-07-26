@@ -13,15 +13,13 @@ from contextlib import asynccontextmanager
 import pytest
 
 from app.container import Container
-from app.domain.digits import DIGITS
 from app.main import create_app
-from tests.e2e.conftest import (
-    CATALOG_SIZE,
-    EXPECTED_PER_DIGIT_PER_FILE,
-    PAGE_SIZE,
-    download_everything,
-)
+from tests.e2e.conftest import download_everything
 from tests.fakes import FakeCatalogClient
+
+# Литералы из спецификации стенда (см. conftest): 23 файла по 500 символов,
+# по 10 на страницу, имена file-0000.txt … file-0022.txt.
+FILES_PER_PAGE = 10
 
 
 def urls_of(body: str) -> str:
@@ -31,6 +29,11 @@ def urls_of(body: str) -> str:
     адреса удобнее в исходном виде.
     """
     return html.unescape(body)
+
+
+# Имена из спецификации стенда: каталог нумеруется с нуля, файлов 23.
+FIRST_NAME = "file-0000.txt"
+LAST_NAME = "file-0022.txt"
 
 
 def file_names_in(body: str) -> list[str]:
@@ -46,7 +49,7 @@ async def test_button_downloads_the_whole_catalog(stack, catalog) -> None:
 
     page = (await http.get("/")).text
     assert "каталог скачан полностью" in page
-    assert f"{CATALOG_SIZE} из {CATALOG_SIZE}" in page
+    assert "23 из 23" in page
 
 
 async def test_health_reports_readiness(stack) -> None:
@@ -106,12 +109,11 @@ async def test_files_page_lists_and_paginates(stack) -> None:
     await download_everything(stack)
 
     first = (await http.get("/files")).text
-    assert f"всего файлов: {CATALOG_SIZE}" in first
-    assert first.count('data-role="file-checkbox"') == PAGE_SIZE
+    assert "всего файлов: 23" in first
+    assert first.count('data-role="file-checkbox"') == FILES_PER_PAGE
 
-    last_page_number = -(-CATALOG_SIZE // PAGE_SIZE)
-    last = (await http.get(f"/files?page={last_page_number}")).text
-    assert last.count('data-role="file-checkbox"') == CATALOG_SIZE % PAGE_SIZE
+    last = (await http.get("/files?page=3")).text
+    assert last.count('data-role="file-checkbox"') == 3
 
 
 async def test_selection_mode_survives_pagination(stack) -> None:
@@ -220,31 +222,36 @@ async def test_both_columns_are_sortable(stack, field: str) -> None:
     assert f"sort={field}&dir=desc" in urls_of(body)
 
 
-async def test_name_sorting_actually_reorders_rows(stack) -> None:
+@pytest.mark.parametrize(
+    ("direction", "expected_first"),
+    [("asc", FIRST_NAME), ("desc", LAST_NAME)],
+)
+async def test_name_sorting_puts_the_right_file_first(
+    stack, direction: str, expected_first: str
+) -> None:
+    """Проверяется конкретное имя, а не отсортированность списка относительно себя.
+
+    ``names == sorted(names)`` прошло бы и на одном файле, и на пустой выдаче.
+    """
     http, _, _ = stack
     await download_everything(stack)
 
-    ascending = file_names_in((await http.get("/files?sort=name&dir=asc")).text)
-    descending = file_names_in((await http.get("/files?sort=name&dir=desc")).text)
-
-    assert ascending == sorted(ascending)
-    assert descending == sorted(descending, reverse=True)
-    assert ascending[0] != descending[0]
+    names = file_names_in((await http.get(f"/files?sort=name&dir={direction}")).text)
+    assert names[0] == expected_first
 
 
-async def test_statistics_table_is_sortable_too(stack) -> None:
+@pytest.mark.parametrize(
+    ("direction", "expected_first"),
+    [("asc", FIRST_NAME), ("desc", LAST_NAME)],
+)
+async def test_statistics_table_is_sortable_too(stack, direction: str, expected_first: str) -> None:
     http, _, _ = stack
     await download_everything(stack)
 
-    ascending = file_names_in(
-        (await http.post("/stats?sort=name&dir=asc", data={"scope": "everything"})).text
+    names = file_names_in(
+        (await http.post(f"/stats?sort=name&dir={direction}", data={"scope": "everything"})).text
     )
-    descending = file_names_in(
-        (await http.post("/stats?sort=name&dir=desc", data={"scope": "everything"})).text
-    )
-
-    assert ascending == sorted(ascending)
-    assert descending == sorted(descending, reverse=True)
+    assert names[0] == expected_first
 
 
 async def test_statistics_pagination_keeps_the_chosen_order(stack) -> None:
@@ -264,9 +271,9 @@ async def test_statistics_for_the_whole_catalog(stack) -> None:
     body = response.text
 
     assert response.status_code == 200
-    assert f"Выбрано файлов: <strong>{CATALOG_SIZE}</strong>" in body
-    expected_total = EXPECTED_PER_DIGIT_PER_FILE * len(DIGITS) * CATALOG_SIZE
-    assert str(expected_total) in body
+    assert "Выбрано файлов: <strong>23</strong>" in body
+    # 23 файла по 500 символов.
+    assert "11500" in body
 
 
 async def test_statistics_for_a_chosen_subset(stack, catalog) -> None:
@@ -278,8 +285,7 @@ async def test_statistics_for_a_chosen_subset(stack, catalog) -> None:
     body = response.text
 
     assert "Выбрано файлов: <strong>3</strong>" in body
-    for name in chosen:
-        assert name in body
+    assert set(chosen) <= set(file_names_in(body))
 
 
 async def test_statistics_without_selection_explains_itself(stack) -> None:
@@ -296,22 +302,19 @@ async def test_per_file_table_is_paginated(stack) -> None:
     await download_everything(stack)
 
     body = (await http.post("/stats", data={"scope": "everything"})).text
-    expected_pages = -(-CATALOG_SIZE // PAGE_SIZE)
-
-    assert body.count("<code>") == PAGE_SIZE
-    assert f"из {expected_pages}" in body
+    assert body.count("<code>") == 10
+    assert "из 3" in body
     # Общий итог всё равно по всей выборке, а не по видимой странице.
-    assert f"Выбрано файлов: <strong>{CATALOG_SIZE}</strong>" in body
+    assert "Выбрано файлов: <strong>23</strong>" in body
 
 
 async def test_last_page_of_statistics_holds_the_remainder(stack) -> None:
     http, _, _ = stack
     await download_everything(stack)
 
-    last_page = -(-CATALOG_SIZE // PAGE_SIZE)
-    body = (await http.post(f"/stats?page={last_page}", data={"scope": "everything"})).text
+    body = (await http.post("/stats?page=3", data={"scope": "everything"})).text
 
-    assert body.count("<code>") == CATALOG_SIZE % PAGE_SIZE
+    assert body.count("<code>") == 3
 
 
 async def test_statistics_rows_are_numbered_continuously(stack) -> None:
@@ -320,7 +323,7 @@ async def test_statistics_rows_are_numbered_continuously(stack) -> None:
     await download_everything(stack)
 
     second = (await http.post("/stats?page=2", data={"scope": "everything"})).text
-    assert f'<td class="is-num note">{PAGE_SIZE + 1}</td>' in second
+    assert '<td class="is-num note">11</td>' in second
 
 
 async def test_statistics_pages_do_not_repeat_files(stack) -> None:
@@ -328,12 +331,12 @@ async def test_statistics_pages_do_not_repeat_files(stack) -> None:
     await download_everything(stack)
 
     seen: list[str] = []
-    for page in range(1, -(-CATALOG_SIZE // PAGE_SIZE) + 1):
+    for page in (1, 2, 3):
         body = (await http.post(f"/stats?page={page}", data={"scope": "everything"})).text
         seen.extend(file_names_in(body))
 
-    assert len(seen) == CATALOG_SIZE
-    assert len(set(seen)) == CATALOG_SIZE
+    assert len(seen) == 23
+    assert len(set(seen)) == 23
 
 
 async def test_statistics_page_number_is_clamped(stack) -> None:
@@ -342,7 +345,7 @@ async def test_statistics_page_number_is_clamped(stack) -> None:
 
     response = await http.post("/stats?page=9999", data={"scope": "everything"})
     assert response.status_code == 200
-    assert f"из {-(-CATALOG_SIZE // PAGE_SIZE)}" in response.text
+    assert "из 3" in response.text
 
 
 async def test_interrupted_run_is_resumed_on_startup(sessions, settings, catalog) -> None:
