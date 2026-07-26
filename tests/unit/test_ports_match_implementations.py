@@ -58,9 +58,7 @@ def _contract(method) -> list[tuple[str, inspect._ParameterKind, bool]]:
 
 def _declared_methods(port: type) -> list[str]:
     return [
-        name
-        for name, member in vars(port).items()
-        if callable(member) and not name.startswith("_")
+        name for name, member in vars(port).items() if callable(member) and not name.startswith("_")
     ]
 
 
