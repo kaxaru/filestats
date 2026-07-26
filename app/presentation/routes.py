@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.container import Container
 from app.domain.sorting import Sorting
+from app.presentation.dependencies import get_container
 from app.presentation.scope import SelectionScope
 from app.presentation.viewmodels import (
     FileListViewModel,
@@ -42,10 +43,6 @@ SERVICE_UNAVAILABLE = 503
 
 HX_REQUEST_HEADER = "HX-Request"
 HX_HISTORY_RESTORE_HEADER = "HX-History-Restore-Request"
-
-
-def get_container(request: Request) -> Container:
-    return request.app.state.container
 
 
 @router.get("/health")

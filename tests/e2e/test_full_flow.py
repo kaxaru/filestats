@@ -1,9 +1,7 @@
-"""Сквозной сценарий: тот же стек, что и в бою, против заглушки каталога.
+"""Сквозной сценарий: веб-интерфейс на полном стеке.
 
-Заглушка вместо настоящего API не для скорости: боевой каталог отдаёт каждый
-файл ровно один раз, и прогонять по нему тесты значило бы безвозвратно
-расходовать данные задания. Всё остальное — приложение, база, маршруты,
-шаблоны — настоящее.
+Стенд — в ``conftest.py`` этого каталога: приложение, база, маршруты и шаблоны
+настоящие, подменён только клиент каталога.
 """
 
 from __future__ import annotations
@@ -12,22 +10,18 @@ import html
 import re
 from contextlib import asynccontextmanager
 
-import httpx
 import pytest
 
-from app.config import Settings
 from app.container import Container
 from app.domain.digits import DIGITS
 from app.main import create_app
-from tests.fakes import FakeCatalogClient, catalog_of
-
-CATALOG_SIZE = 23
-PAGE_SIZE = 10
-
-# Содержимое подобрано так, чтобы ожидаемые счётчики считались в уме:
-# каждая цифра встречается ровно 50 раз в каждом файле.
-CONTENT = "0123456789" * 50
-EXPECTED_PER_DIGIT_PER_FILE = 50
+from tests.e2e.conftest import (
+    CATALOG_SIZE,
+    EXPECTED_PER_DIGIT_PER_FILE,
+    PAGE_SIZE,
+    download_everything,
+)
+from tests.fakes import FakeCatalogClient
 
 
 def urls_of(body: str) -> str:
@@ -41,43 +35,6 @@ def urls_of(body: str) -> str:
 
 def file_names_in(body: str) -> list[str]:
     return re.findall(r"<code>([^<]+)</code>", body)
-
-
-@pytest.fixture
-def catalog() -> dict[str, str]:
-    return {name: CONTENT for name in catalog_of(CATALOG_SIZE)}
-
-
-@pytest.fixture
-def settings(database_url: str) -> Settings:
-    configured = Settings(database_url=database_url)
-    configured.web.page_size = PAGE_SIZE
-    return configured
-
-
-@pytest.fixture
-async def stack(sessions, settings, catalog):
-    """Поднять приложение с подставным каталогом и настоящей базой."""
-    client = FakeCatalogClient(catalog)
-
-    @asynccontextmanager
-    async def catalog_client(_settings, _observer):
-        yield client
-
-    container = Container(settings, session_factory=sessions, catalog_client=catalog_client)
-    application = create_app(container)
-
-    async with application.router.lifespan_context(application):
-        transport = httpx.ASGITransport(app=application)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as http:
-            yield http, container, client
-
-
-async def download_everything(stack) -> None:
-    http, container, _ = stack
-    response = await http.post("/download/start", follow_redirects=False)
-    assert response.status_code == 303
-    await container.worker.wait()
 
 
 async def test_button_downloads_the_whole_catalog(stack, catalog) -> None:

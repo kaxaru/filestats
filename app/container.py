@@ -88,7 +88,15 @@ class Container:
 
     @property
     def statistics(self) -> StatisticsService:
-        return StatisticsService(self.queries, page_size=self.settings.web.page_size)
+        return self.statistics_of(self.settings.web.page_size)
+
+    def statistics_of(self, page_size: int) -> StatisticsService:
+        """Расчёты с заданным размером страницы.
+
+        Страницам сервиса подходит настроенный размер, а клиенту API нужен свой:
+        размер выдачи — часть его запроса, а не настройка сервера.
+        """
+        return StatisticsService(self.queries, page_size=page_size)
 
     # --- скачивание ----------------------------------------------------------
 

@@ -57,6 +57,20 @@ class FileDigits:
 
 
 @dataclass(frozen=True, slots=True)
+class FileDetails:
+    """Один файл целиком — для карточки в API.
+
+    В отличие от ``FileDigits`` несёт ещё и содержимое: списку оно не нужно и
+    раздуло бы ответ, а по конкретному файлу его как раз и запрашивают.
+    """
+
+    name: FileName
+    downloaded_at: datetime | None
+    counts: DigitCounts
+    content: FileContent
+
+
+@dataclass(frozen=True, slots=True)
 class FilePage:
     """Страница списка скачанных файлов."""
 
@@ -139,6 +153,9 @@ class CatalogQueries(Protocol):
     async def files_with_content(self) -> int: ...
 
     async def page(self, *, number: int, size: int, sorting: Sorting) -> FilePage: ...
+
+    async def file_details(self, name: FileName) -> FileDetails | None:
+        """Один скачанный файл или ``None``, если его нет или он без содержимого."""
 
     async def count_selected(self, selection: Selection) -> int: ...
 

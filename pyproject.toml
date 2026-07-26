@@ -38,10 +38,12 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 # Вызовы в значениях по умолчанию — штатный способ объявить зависимость в
 # FastAPI, а не забытая мутабельная константа, от которой защищает B008.
 extend-immutable-calls = [
+    "fastapi.Body",
     "fastapi.Depends",
     "fastapi.Form",
-    "fastapi.Query",
     "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Query",
 ]
 
 [tool.pytest.ini_options]

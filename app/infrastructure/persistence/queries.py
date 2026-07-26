@@ -13,11 +13,12 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.sql import ColumnElement
 
-from app.application.ports import FileDigits, FilePage
+from app.application.ports import FileDetails, FileDigits, FilePage
 from app.domain.digits import DIGITS, DigitCounts
 from app.domain.file import STATUSES_WITH_CONTENT, CatalogFile
 from app.domain.selection import Selection
 from app.domain.sorting import SortField, Sorting
+from app.domain.values import FileName
 from app.infrastructure.persistence.orm import files_table
 
 DIGIT_COLUMNS = [files_table.c[f"d{digit}"] for digit in DIGITS]
@@ -86,6 +87,28 @@ class SqlAlchemyCatalogQueries:
             session.expunge_all()
 
         return FilePage(records=records, total=total, number=number, pages=pages)
+
+    async def file_details(self, name: FileName) -> FileDetails | None:
+        statement = _only_downloaded(
+            select(
+                files_table.c.name,
+                files_table.c.downloaded_at,
+                files_table.c.content,
+                *DIGIT_COLUMNS,
+            )
+        ).where(files_table.c.name == name.value)
+
+        async with self._sessions() as session:
+            row = (await session.execute(statement)).one_or_none()
+
+        if row is None:
+            return None
+        return FileDetails(
+            name=row[0],
+            downloaded_at=row[1],
+            content=row[2],
+            counts=DigitCounts(*(int(value) for value in row[3:])),
+        )
 
     async def count_selected(self, selection: Selection) -> int:
         return await self._scalar(
